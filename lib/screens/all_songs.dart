@@ -90,57 +90,57 @@ class _AllSongsState extends State<AllSongs> {
   //   }
   // }
 
-  // Stream<List<SongInfo>> songInfoo() async* {
-  //   Map<Songs, dynamic> song = {
-  //     Songs.hasInfo: '',
-  //     Songs.info: '',
-  //     Songs.path: '',
-  //   };
-
-  //   if (await Permission.storage.request().isGranted) {
-  //     songs = await audioQuery.getSongs();
-  //     yield songs;
-  //   }
-  // }
-
   Stream<List<SongInfo>> songInfoo() async* {
-    Map<Songs, dynamic> song;
-
-    List<String> manualList;
-
-    Directory dir = Directory('/storage/emulated/0/');
-    List<FileSystemEntity> _files =
-        dir.listSync(recursive: true, followLinks: false);
-    for (FileSystemEntity entity in _files) {
-      String path = entity.path.toString();
-      if (path.endsWith('.mp3')) {
-        manualList.add(path);
-      }
-    }
+    Map<Songs, dynamic> song = {
+      Songs.hasInfo: '',
+      Songs.info: '',
+      Songs.path: '',
+    };
 
     if (await Permission.storage.request().isGranted) {
-      for (var info in zip([await audioQuery.getSongs(), manualList])) {
-        SongInfo func = info[0];
-        String man = info[1];
-        String n = man.split('mp3')[0].toString().split('/').last.split('(')[0];
-        if (func.title == n) {
-          song = {
-            Songs.hasInfo: true,
-            Songs.info: func,
-            Songs.path: '',
-          };
-        } else {
-          song = {
-            Songs.hasInfo: false,
-            Songs.info: '',
-            Songs.path: man,
-          };
-        }
-        // songs.add(song);
-      }
+      songs = await audioQuery.getSongs();
       yield songs;
     }
   }
+
+  // Stream<List<SongInfo>> songInfoo() async* {
+  //   Map<Songs, dynamic> song;
+
+  //   List<String> manualList;
+
+  //   Directory dir = Directory('/storage/emulated/0/');
+  //   List<FileSystemEntity> _files =
+  //       dir.listSync(recursive: true, followLinks: false);
+  //   for (FileSystemEntity entity in _files) {
+  //     String path = entity.path.toString();
+  //     if (path.endsWith('.mp3')) {
+  //       manualList.add(path);
+  //     }
+  //   }
+
+  //   if (await Permission.storage.request().isGranted) {
+  //     for (var info in zip([await audioQuery.getSongs(), manualList])) {
+  //       SongInfo func = info[0];
+  //       String man = info[1];
+  //       String n = man.split('mp3')[0].toString().split('/').last.split('(')[0];
+  //       if (func.title == n) {
+  //         song = {
+  //           Songs.hasInfo: true,
+  //           Songs.info: func,
+  //           Songs.path: '',
+  //         };
+  //       } else {
+  //         song = {
+  //           Songs.hasInfo: false,
+  //           Songs.info: '',
+  //           Songs.path: man,
+  //         };
+  //       }
+  //       // songs.add(song);
+  //     }
+  //     yield songs;
+  //   }
+  // }
 
   String printDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
