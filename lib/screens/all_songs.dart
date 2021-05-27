@@ -3,9 +3,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_audio_query/flutter_audio_query.dart';
 import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 import 'package:music_player/audio.dart';
+import 'package:music_player/screens/song_info.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 enum AfterSong {
@@ -26,43 +26,22 @@ class AllSongs extends StatefulWidget {
 }
 
 class _AllSongsState extends State<AllSongs> {
+  MetadataRetriever retriever = MetadataRetriever();
   AudioPlayer audioPlayer;
   SongInfo selectedSong;
   List<SongInfo> songs = [];
-  // Map<Songs, dynamic> songs;
   AfterSong afterSong = AfterSong.stop;
-  FlutterAudioQuery audioQuery;
-
-  MetadataRetriever retriever = new MetadataRetriever();
-
-  Future<Uint8List> meta(String path) async {
-    try {
-      await retriever.setFile(File(path));
-    } catch (e) {
-      return null;
-    }
-    // Metadata metadata = await retriever.metadata;
-    return retriever.albumArt;
-  }
 
   @override
   void initState() {
     super.initState();
-
-    //Audio Query
-    audioQuery = FlutterAudioQuery();
 
     //Audio Player
     audioPlayer = AudioPlayer();
     audioPlayer.onPlayerStateChanged.listen((event) {
       if (event == PlayerState.COMPLETED) {
         setState(() {
-          SongInfo nextSong;
-          songs.forEach((element) {
-            if (selectedSong.id == element.id) {
-              nextSong = songs[songs.indexOf(element) + 1];
-            }
-          });
+          SongInfo nextSong = songs[songs.indexOf(selectedSong) + 1];
           SongInfo sameSong = selectedSong;
           if (afterSong == AfterSong.next) {
             Audio.playAudioFromLocalStorage(audioPlayer, nextSong.filePath);
@@ -87,67 +66,34 @@ class _AllSongsState extends State<AllSongs> {
     super.dispose();
   }
 
-  // Stream<List<String>> songsPath() async* {
-  //   List<FileSystemEntity> _files;
+  Future<List<SongInfo>> songsPath() async {
+    List<FileSystemEntity> _files;
+    SongInfo songInfo;
+    Metadata metadata;
 
-  //   if (await Permission.storage.request().isGranted) {
-  //     Directory dir = Directory('/storage/emulated/0/');
-  //     _files = dir.listSync(recursive: true, followLinks: false);
-  //     for (FileSystemEntity entity in _files) {
-  //       String path = entity.path.toString();
-  //       if (path.endsWith('.mp3')) {
-  //         songs.add(path);
-  //       }
-  //     }
-  //     yield songs;
-  //   }
-  // }
-
-  Future<List<dynamic>> songInfoo() async {
     if (await Permission.storage.request().isGranted) {
-      songs = await audioQuery.getSongs();
+      Directory dir = Directory('/storage/emulated/0/');
+      _files = dir.listSync(recursive: true, followLinks: false);
+      for (FileSystemEntity entity in _files) {
+        Uint8List image;
+        String path = entity.path;
+        if (path.endsWith('.mp3')) {
+          try {
+            await retriever.setFile(File(path));
+            image = retriever.albumArt;
+          } catch (e) {
+            image = null;
+          }
+          metadata = await retriever.metadata;
+          songInfo = SongInfo.setData(metadata, image, path);
+          songs.add(songInfo);
+        }
+      }
       return songs;
+    } else {
+      return null;
     }
   }
-
-  // Stream<List<SongInfo>> songInfoo() async* {
-  //   Map<Songs, dynamic> song;
-
-  //   List<String> manualList;
-
-  //   Directory dir = Directory('/storage/emulated/0/');
-  //   List<FileSystemEntity> _files =
-  //       dir.listSync(recursive: true, followLinks: false);
-  //   for (FileSystemEntity entity in _files) {
-  //     String path = entity.path.toString();
-  //     if (path.endsWith('.mp3')) {
-  //       manualList.add(path);
-  //     }
-  //   }
-
-  //   if (await Permission.storage.request().isGranted) {
-  //     for (var info in zip([await audioQuery.getSongs(), manualList])) {
-  //       SongInfo func = info[0];
-  //       String man = info[1];
-  //       String n = man.split('mp3')[0].toString().split('/').last.split('(')[0];
-  //       if (func.title == n) {
-  //         song = {
-  //           Songs.hasInfo: true,
-  //           Songs.info: func,
-  //           Songs.path: '',
-  //         };
-  //       } else {
-  //         song = {
-  //           Songs.hasInfo: false,
-  //           Songs.info: '',
-  //           Songs.path: man,
-  //         };
-  //       }
-  //       // songs.add(song);
-  //     }
-  //     yield songs;
-  //   }
-  // }
 
   String printDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, "0");
@@ -185,15 +131,19 @@ class _AllSongsState extends State<AllSongs> {
       ),
       body: SafeArea(
         child: FutureBuilder(
-          future: songInfoo(),
+          future: songsPath(),
           builder: (BuildContext context, AsyncSnapshot snapshot) {
-            if (snapshot.hasData && snapshot.data != null) {
-              return ListView.builder(
-                itemCount: snapshot.data.length,
-                itemBuilder: (context, index) {
-                  return _buildListTile(snapshot.data[index]);
-                },
-              );
+            if (snapshot.hasData) {
+              if (snapshot.data != null) {
+                return ListView.builder(
+                  itemCount: snapshot.data.length,
+                  itemBuilder: (context, index) {
+                    return _buildListTile(snapshot.data[index]);
+                  },
+                );
+              } else {
+                return Center(child: Text('Storage Permission Not Given'));
+              }
             } else {
               return Center(child: CircularProgressIndicator());
             }
@@ -204,38 +154,36 @@ class _AllSongsState extends State<AllSongs> {
   }
 
   ListTile _buildListTile(SongInfo currentSong) {
-    // Uint8List image;
+    var defaultImage = Image.asset(
+      'assets/default_music_image.jpg',
+      height: 50,
+      width: 100,
+      fit: BoxFit.cover,
+    );
     return ListTile(
-      leading: FutureBuilder(
-        future: meta(currentSong.filePath),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            if (snapshot.data != null) {
-              return Image.memory(snapshot.data);
-            } else {
-              return Container(height: 10, width: 10, color: Colors.red);
-            }
-          } else {
-            return Container(height: 10, width: 10, color: Colors.red);
-          }
-        },
-      ),
-      tileColor: selectedSong != null && selectedSong.id == currentSong.id
-          ? Colors.grey.shade300
-          : Colors.white,
-      trailing: selectedSong != null && selectedSong.id == currentSong.id
-          ? _pauseStopButton()
-          : _playButton(currentSong),
+      leading: currentSong.albumArt != null
+          ? Image.memory(
+              currentSong.albumArt,
+              height: 50,
+              width: 100,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return defaultImage;
+              },
+            )
+          : defaultImage,
+      tileColor:
+          selectedSong != null && selectedSong.filePath == currentSong.filePath
+              ? Colors.grey.shade300
+              : Colors.white,
+      trailing:
+          selectedSong != null && selectedSong.filePath == currentSong.filePath
+              ? _pauseStopButton()
+              : _playButton(currentSong),
       title: Text(
-        // currentSong
-        //     .toString()
-        //     .split('mp3')[0]
-        //     .toString()
-        //     .split('/')
-        //     .last
-        //     .split('(')[0],
-        currentSong.displayName,
-      ),
+          // currentSong.filePath.split('.mp3')[0].toString().split('/').last ??
+          currentSong.filePath.split('/').last.split('(')[0] ??
+              currentSong.filePath.split('/').last),
     );
   }
 
@@ -251,21 +199,20 @@ class _AllSongsState extends State<AllSongs> {
             ),
             onPressed: () {
               Audio.stopAudio(audioPlayer);
-              setState(() {});
             },
           ),
           IconButton(
             icon: Icon(
-              audioPlayer.state == PlayerState.PLAYING
-                  ? Icons.pause
-                  : Icons.play_arrow,
+              audioPlayer.state == PlayerState.PAUSED
+                  ? Icons.play_arrow
+                  : Icons.pause,
               size: 40,
             ),
             onPressed: () {
               setState(() {
-                audioPlayer.state == PlayerState.PLAYING
-                    ? Audio.pauseAudio(audioPlayer)
-                    : Audio.resumeAudio(audioPlayer);
+                audioPlayer.state == PlayerState.PAUSED
+                    ? Audio.resumeAudio(audioPlayer)
+                    : Audio.pauseAudio(audioPlayer);
               });
             },
           ),
@@ -281,10 +228,10 @@ class _AllSongsState extends State<AllSongs> {
         size: 40,
       ),
       onPressed: () {
+        Audio.playAudioFromLocalStorage(audioPlayer, currenttSong.filePath);
         setState(() {
           selectedSong = currenttSong;
         });
-        Audio.playAudioFromLocalStorage(audioPlayer, currenttSong.filePath);
       },
     );
   }
