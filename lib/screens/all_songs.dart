@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_audio_query/flutter_audio_query.dart';
+import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 import 'package:music_player/audio.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:quiver/iterables.dart';
 
 enum AfterSong {
   loop,
@@ -31,6 +32,18 @@ class _AllSongsState extends State<AllSongs> {
   // Map<Songs, dynamic> songs;
   AfterSong afterSong = AfterSong.stop;
   FlutterAudioQuery audioQuery;
+
+  MetadataRetriever retriever = new MetadataRetriever();
+
+  Future<Uint8List> meta(String path) async {
+    try {
+      await retriever.setFile(File(path));
+    } catch (e) {
+      return null;
+    }
+    // Metadata metadata = await retriever.metadata;
+    return retriever.albumArt;
+  }
 
   @override
   void initState() {
@@ -90,16 +103,10 @@ class _AllSongsState extends State<AllSongs> {
   //   }
   // }
 
-  Stream<List<SongInfo>> songInfoo() async* {
-    Map<Songs, dynamic> song = {
-      Songs.hasInfo: '',
-      Songs.info: '',
-      Songs.path: '',
-    };
-
+  Future<List<dynamic>> songInfoo() async {
     if (await Permission.storage.request().isGranted) {
       songs = await audioQuery.getSongs();
-      yield songs;
+      return songs;
     }
   }
 
@@ -177,8 +184,8 @@ class _AllSongsState extends State<AllSongs> {
         ],
       ),
       body: SafeArea(
-        child: StreamBuilder(
-          stream: songInfoo(),
+        child: FutureBuilder(
+          future: songInfoo(),
           builder: (BuildContext context, AsyncSnapshot snapshot) {
             if (snapshot.hasData && snapshot.data != null) {
               return ListView.builder(
@@ -197,7 +204,22 @@ class _AllSongsState extends State<AllSongs> {
   }
 
   ListTile _buildListTile(SongInfo currentSong) {
+    // Uint8List image;
     return ListTile(
+      leading: FutureBuilder(
+        future: meta(currentSong.filePath),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            if (snapshot.data != null) {
+              return Image.memory(snapshot.data);
+            } else {
+              return Container(height: 10, width: 10, color: Colors.red);
+            }
+          } else {
+            return Container(height: 10, width: 10, color: Colors.red);
+          }
+        },
+      ),
       tileColor: selectedSong != null && selectedSong.id == currentSong.id
           ? Colors.grey.shade300
           : Colors.white,
@@ -212,7 +234,7 @@ class _AllSongsState extends State<AllSongs> {
         //     .split('/')
         //     .last
         //     .split('(')[0],
-        currentSong.title,
+        currentSong.displayName,
       ),
     );
   }
