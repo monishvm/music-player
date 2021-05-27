@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
@@ -7,17 +6,12 @@ import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 import 'package:music_player/audio.dart';
 import 'package:music_player/screens/song_info.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:async/async.dart';
 
 enum AfterSong {
   loop,
   next,
   stop,
-}
-
-enum Songs {
-  hasInfo,
-  path,
-  info,
 }
 
 class AllSongs extends StatefulWidget {
@@ -26,6 +20,7 @@ class AllSongs extends StatefulWidget {
 }
 
 class _AllSongsState extends State<AllSongs> {
+  final AsyncMemoizer _memoizer = AsyncMemoizer();
   MetadataRetriever retriever = MetadataRetriever();
   AudioPlayer audioPlayer;
   SongInfo selectedSong;
@@ -39,6 +34,7 @@ class _AllSongsState extends State<AllSongs> {
     //Audio Player
     audioPlayer = AudioPlayer();
     audioPlayer.onPlayerStateChanged.listen((event) {
+      // after Song complete
       if (event == PlayerState.COMPLETED) {
         setState(() {
           SongInfo nextSong = songs[songs.indexOf(selectedSong) + 1];
@@ -64,6 +60,14 @@ class _AllSongsState extends State<AllSongs> {
   void dispose() {
     audioPlayer.dispose();
     super.dispose();
+  }
+
+  // To get song only if any changes
+  _getAllSongs() {
+    return this._memoizer.runOnce(() async {
+      await Future.delayed(Duration(seconds: 2));
+      return songsPath();
+    });
   }
 
   Future<List<SongInfo>> songsPath() async {
@@ -131,7 +135,7 @@ class _AllSongsState extends State<AllSongs> {
       ),
       body: SafeArea(
         child: FutureBuilder(
-          future: songsPath(),
+          future: _getAllSongs(),
           builder: (BuildContext context, AsyncSnapshot snapshot) {
             if (snapshot.hasData) {
               if (snapshot.data != null) {
@@ -181,7 +185,6 @@ class _AllSongsState extends State<AllSongs> {
               ? _pauseStopButton()
               : _playButton(currentSong),
       title: Text(
-          // currentSong.filePath.split('.mp3')[0].toString().split('/').last ??
           currentSong.filePath.split('/').last.split('(')[0] ??
               currentSong.filePath.split('/').last),
     );
