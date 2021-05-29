@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
@@ -8,6 +9,7 @@ import 'package:music_player/classes/song_info.dart';
 import 'package:music_player/screens/downloads.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:async/async.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 enum AfterSong {
   loop,
@@ -28,16 +30,35 @@ class _AllSongsState extends State<AllSongs> {
   List<SongInfo> songs = [];
   AfterSong afterSong = AfterSong.stop;
 
+  int currentIndex = 0;
+  String sharedText;
+
   @override
   void initState() {
     super.initState();
 
-    
+    ReceiveSharingIntent.getTextStream().listen((String value) {
+      setState(() {
+        sharedText = value;
+        print(sharedText);
+        if (sharedText != null) {
+          currentIndex = 1;
+        }
+      });
+    }, onError: (err) {
+      print("getLinkStream error: $err");
+    });
 
-
-
-
-
+    // For sharing or opening urls/text coming from outside the app while the app is closed
+    ReceiveSharingIntent.getInitialText().then((String value) {
+      setState(() {
+        sharedText = value;
+        print(sharedText);
+        if (sharedText != null) {
+          currentIndex = 1;
+        }
+      });
+    });
 
     //Audio Player
     audioPlayer = AudioPlayer();
@@ -117,6 +138,24 @@ class _AllSongsState extends State<AllSongs> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: currentIndex,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.music_note),
+            label: 'all_songs',
+          ),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.download), label: 'downloads')
+        ],
+        onTap: (value) {
+          setState(() {
+            currentIndex = value;
+          });
+        },
+      ),
       appBar: AppBar(
         actions: [
           IconButton(
@@ -141,34 +180,42 @@ class _AllSongsState extends State<AllSongs> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        child: Center(child: Icon(Icons.download)),
-        onPressed: () {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (context) => Downloads()));
-        },
-      ),
-      body: SafeArea(
-        child: FutureBuilder(
-          future: _getAllSongs(),
-          builder: (BuildContext context, AsyncSnapshot snapshot) {
-            if (snapshot.hasData) {
-              if (snapshot.data != null) {
-                return ListView.builder(
-                  itemCount: snapshot.data.length,
-                  itemBuilder: (context, index) {
-                    return _buildListTile(snapshot.data[index]);
-                  },
-                );
-              } else {
-                return Center(child: Text('Storage Permission Not Given'));
-              }
-            } else {
-              return Center(child: CircularProgressIndicator());
-            }
-          },
-        ),
-      ),
+      body: currentIndex != 0
+          ? Downloads(url: sharedText)
+          : SafeArea(
+              child: FutureBuilder(
+                future: _getAllSongs(),
+                builder: (BuildContext context, AsyncSnapshot snapshot) {
+                  if (snapshot.hasData) {
+                    if (snapshot.data != null) {
+                      return ListView.builder(
+                        itemCount: snapshot.data.length,
+                        itemBuilder: (context, index) {
+                          return _buildListTile(snapshot.data[index]);
+                        },
+                      );
+                    } else {
+                      return Center(
+                          child: Text('Storage Permission Not Given'));
+                    }
+                  } else {
+                    return ListView.builder(
+                      itemCount: 20,
+                      itemBuilder: (context, index) {
+                        return ListTile(
+                          leading: Container(
+                              height: 50,
+                              width: 100,
+                              color: Colors.grey.shade400),
+                          title: Container(height: 60),
+                          trailing: Icon(Icons.play_arrow, size: 40),
+                        );
+                      },
+                    );
+                  }
+                },
+              ),
+            ),
     );
   }
 
@@ -199,8 +246,11 @@ class _AllSongsState extends State<AllSongs> {
           selectedSong != null && selectedSong.filePath == currentSong.filePath
               ? _pauseStopButton()
               : _playButton(currentSong),
-      title: Text(currentSong.filePath.split('/').last.split('(')[0] ??
-          currentSong.filePath.split('/').last),
+      title: Container(
+        height: 60,
+        child: Text(currentSong.filePath.split('/').last.split('(')[0] ??
+            currentSong.filePath.split('/').last),
+      ),
     );
   }
 

@@ -12,18 +12,13 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  bool showSongs = true;
-
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        body: showSongs ? AllSongs() : Downloads(),
+        
+        body:AllSongs(),
       ),
     );
   }
