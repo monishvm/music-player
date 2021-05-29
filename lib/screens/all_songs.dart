@@ -3,8 +3,9 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_media_metadata/flutter_media_metadata.dart';
-import 'package:music_player/audio.dart';
-import 'package:music_player/screens/song_info.dart';
+import 'package:music_player/classes/audio.dart';
+import 'package:music_player/classes/song_info.dart';
+import 'package:music_player/screens/downloads.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:async/async.dart';
 
@@ -30,6 +31,13 @@ class _AllSongsState extends State<AllSongs> {
   @override
   void initState() {
     super.initState();
+
+    
+
+
+
+
+
 
     //Audio Player
     audioPlayer = AudioPlayer();
@@ -132,6 +140,13 @@ class _AllSongsState extends State<AllSongs> {
             },
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Center(child: Icon(Icons.download)),
+        onPressed: () {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (context) => Downloads()));
+        },
       ),
       body: SafeArea(
         child: FutureBuilder(
