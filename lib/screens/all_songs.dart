@@ -184,9 +184,8 @@ class _AllSongsState extends State<AllSongs> {
           selectedSong != null && selectedSong.filePath == currentSong.filePath
               ? _pauseStopButton()
               : _playButton(currentSong),
-      title: Text(
-          currentSong.filePath.split('/').last.split('(')[0] ??
-              currentSong.filePath.split('/').last),
+      title: Text(currentSong.filePath.split('/').last.split('(')[0] ??
+          currentSong.filePath.split('/').last),
     );
   }
 
